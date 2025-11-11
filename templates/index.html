@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dyslexia Screening Prototype</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Dyslexia Screening Activity</h1>
+        <p>Please read the text below carefully. We will track your reading pattern.</p>
+        
+        <div id="reading-text">
+            <p>The quick brown fox jumps over the lazy dog. This sentence contains all the letters in the alphabet.</p>
+        </div>
+
+        <div id="webcam-container">
+            <!-- in the real application, a webcam feed would be here -->
+            <p>🔍 Gaze Tracking Area (Move your mouse over the text as if you are reading)</p>
+        </div>
+
+        <button id="start-btn">Start Screening</button>
+        <button id="analyze-btn" disabled>Analyze My Reading</button>
+
+        <div id="results" style="display: none;">
+            <h2>Results</h2>
+            <p><strong>Dyslexia Probability Score:</strong> <span id="risk-score">-</span></p>
+            <p><strong>Recommended Exercise:</strong> <span id="recommendation">-</span></p>
+        </div>
+    </div>
+
+    <script>
+        let gazeData = [];
+        let isRecording = false;
+
+        document.getElementById('start-btn').addEventListener('click', function() {
+            isRecording = true;
+            gazeData = [];
+            document.getElementById('analyze-btn').disabled = false;
+            document.getElementById('results').style.display = 'none';
+            alert("Screening started! Move your mouse over the text as you read.");
+        });
+
+        document.getElementById('analyze-btn').addEventListener('click', function() {
+            isRecording = false;
+            analyzeData();
+        });
+
+        // Use mouse movement as a proxy for gaze tracking
+        document.addEventListener('mousemove', function(e) {
+            if (!isRecording) return;
+
+            gazeData.push({
+                x: e.clientX,
+                y: e.clientY,
+                timestamp: Date.now()
+            });
+
+            // Limit data size to prevent memory issues
+            if (gazeData.length > 1000) {
+                gazeData.shift();
+            }
+        });
+
+        function analyzeData() {
+            fetch('/analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    gazeData: gazeData
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('risk-score').textContent = data.risk_score;
+                    document.getElementById('recommendation').textContent = data.recommendation;
+                    document.getElementById('results').style.display = 'block';
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred during analysis.');
+            });
+        }
+    </script>
+</body>
+</html>
